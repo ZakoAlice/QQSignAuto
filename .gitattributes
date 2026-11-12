@@ -1,0 +1,8 @@
+# 仓库内所有文本文件统一 LF：Windows 克隆时若被转成 CRLF，
+# bash 脚本会报 \r 错误，assets/xposed_init 里的类名也可能带 \r 而加载不到。
+* text=auto eol=lf
+
+# 二进制产物，不做换行转换也不做 diff
+*.apk  binary
+*.png  binary
+*.jpg  binary

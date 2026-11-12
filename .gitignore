@@ -1,0 +1,23 @@
+# 构建产物（dist/ 里的成品 APK 要保留，CI 靠它发版）
+module/build/
+probe/build/
+work/
+*.class
+
+# 密钥与本地配置：绝不进公开仓库
+*.keystore
+*.p12
+*.jks
+keystore.properties
+signing.env
+qqsign_auto.cfg
+
+# 反编译证据与真机日志：含第三方 App 反编译代码与运行记录，
+# 公开仓库有版权 / 隐私风险，只留本地即可
+evidence/
+
+# 编辑器 / 系统
+.idea/
+.vscode/
+Thumbs.db
+.DS_Store

@@ -1,0 +1,57 @@
+name: Publish module APK to Xposed-Modules-Repo
+
+# 这个项目不是 Gradle 工程：APK 由本机 module/build.sh 用 Windows 的
+# d8.bat / aapt2.exe / apksigner.bat 构建，GitHub Actions 的 Linux runner 跑不了。
+# 所以 CI 不做编译，只负责把已经构建好的 dist/QQSignAuto.apk 发到模块仓库。
+#
+# 本机流程：cd module && bash build.sh -> 把产物复制到 dist/QQSignAuto.apk
+#          -> git add/commit/push -> 在这里点 Run workflow
+on:
+  workflow_dispatch:
+    inputs:
+      version_name:
+        description: '版本名，必须与 module/build.sh 的 --version-name 一致'
+        required: true
+        default: '1.7'
+      version_code:
+        description: '版本码，必须与 module/build.sh 的 --version-code 一致'
+        required: true
+        default: '11'
+      apk_path:
+        description: '仓库内的 APK 路径'
+        required: true
+        default: 'dist/QQSignAuto.apk'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      # 必须等于 APK 里 AndroidManifest.xml 的 package，也等于模块仓库名
+      PKG: io.github.zakoalice.qqsignauto
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Verify APK exists
+        run: |
+          set -euo pipefail
+          APK="${{ inputs.apk_path }}"
+          test -f "$APK" || { echo "APK not found: $APK"; exit 1; }
+          echo "APK: $APK ($(stat -c%s "$APK") bytes)"
+
+      - name: Create release with APK attached in one shot
+        env:
+          # fine-grained PAT：作用域只勾 Xposed-Modules-Repo/<包名>
+          # 权限 Contents: Read and Write + Metadata: Read-only
+          GH_TOKEN: ${{ secrets.MODULE_REPO_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.version_code }}-${{ inputs.version_name }}"
+          ASSET="QQSignAuto-${{ inputs.version_name }}.apk"
+          cp "${{ inputs.apk_path }}" "$ASSET"
+          # 关键点：Release 创建时就把 APK 一起附上。
+          # 先建 Release 再补 asset 不会触发 webhook，bot 不改 tag，仓库就不刷新。
+          gh release create "$TAG" \
+            --repo "Xposed-Modules-Repo/$PKG" \
+            --title "${{ inputs.version_name }}" \
+            --notes "Release ${{ inputs.version_name }}" \
+            "$ASSET"
